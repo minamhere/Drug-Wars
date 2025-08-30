@@ -8,13 +8,17 @@ class GameState: ObservableObject {
     @Published var displayLines: [String] = []
     @Published var gameMode: GameMode = .menu
     @Published var inventory: [String: Int] = [:]
-    @Published var capacity: Int = 100
+    @Published var capacity: Int = 10000
     @Published var hasGun: Bool = false
+    @Published var weaponsInventory: [String: Int] = [:]
+    @Published var currentRoadblockType: String = ""
     @Published var numberInput: String = ""
     @Published var selectedDrug: String = ""
     
     let locations = ["Briargate", "Broadmoor", "Downtown", "Manitou Springs", "Old Colorado City"]
     let drugs = ["Cocaine", "Heroin", "Acid", "Weed", "Speed", "Ludes"]
+    let weapons = ["Pistol", "Shotgun", "Rifle", "Machine Gun"]
+    let roadblockTypes = ["Officer Hardass", "Detective Stone", "Agent Smith", "Sheriff Brown", "Captain Miller"]
     
     var drugPrices: [String: [String: Int]] = [:]
     
@@ -33,6 +37,7 @@ class GameState: ObservableObject {
     init() {
         currentLocation = "Briargate"
         generateDrugPrices()
+        initializeWeapons()
         showMainMenu()
     }
     
@@ -182,6 +187,8 @@ class GameState: ObservableObject {
         currentLocation = "Briargate"
         inventory = [:]
         hasGun = false
+        weaponsInventory = [:]
+        initializeWeapons()
         print("About to generate drug prices...")
         generateDrugPrices()
         print("About to show trading screen...")
@@ -291,23 +298,29 @@ class GameState: ObservableObject {
             return
         }
         
-        if Int.random(in: 1...10) <= 3 {
-            policeEncounter()
+        let encounterChance = Int.random(in: 1...10)
+        if encounterChance <= 3 {
+            roadblockEncounter()
+        } else if encounterChance == 4 && Int.random(in: 1...10) <= 2 {
+            findWeapon()
         } else {
             showTradingScreen()
         }
     }
     
-    func policeEncounter() {
+    func roadblockEncounter() {
+        currentRoadblockType = roadblockTypes.randomElement() ?? "Officer Hardass"
+        let hasWeapons = !weaponsInventory.isEmpty
+        
         displayLines = [
-            "POLICE ENCOUNTER!",
+            "ROADBLOCK ENCOUNTER!",
             "",
-            "Officer Hardass is here!",
+            "\(currentRoadblockType) is here!",
             "",
             "What do you do?",
             "",
             "1. Run",
-            "2. Fight" + (hasGun ? "" : " (no gun)"),
+            "2. Fight" + (hasWeapons ? "" : " (no weapons)"),
             "3. Surrender"
         ]
         gameMode = .encounter
@@ -533,20 +546,33 @@ class GameState: ObservableObject {
             gameMode = .menu
         case "2":
             // Fight
-            if hasGun {
-                if Int.random(in: 1...10) <= 5 {
+            if !weaponsInventory.isEmpty {
+                let weapon = weaponsInventory.keys.randomElement() ?? "Pistol"
+                let weaponPower = getWeaponPower(weapon)
+                let enemyStrength = getEnemyStrength(currentRoadblockType)
+                
+                if weaponPower >= enemyStrength {
                     let reward = Int.random(in: 1000...5000)
                     cash += reward
-                    displayLines = ["You won! Reward: $\(reward)", "", "1. Continue"]
+                    displayLines = ["You won with \(weapon)!", "Reward: $\(reward)", "", "1. Continue"]
+                    
+                    // Small chance weapon breaks
+                    if Int.random(in: 1...10) <= 2 {
+                        weaponsInventory[weapon] = (weaponsInventory[weapon] ?? 1) - 1
+                        if weaponsInventory[weapon]! <= 0 {
+                            weaponsInventory.removeValue(forKey: weapon)
+                        }
+                        displayLines[1] = "Reward: $\(reward)\n\(weapon) broke!"
+                    }
                 } else {
                     let fine = cash / 3
                     cash = max(0, cash - fine)
-                    displayLines = ["You lost! Lost $\(fine)", "", "1. Continue"]
+                    displayLines = ["You lost with \(weapon)!", "Lost $\(fine)", "", "1. Continue"]
                 }
             } else {
                 let fine = cash / 2
                 cash = max(0, cash - fine)
-                displayLines = ["Can't fight without gun!", "Lost $\(fine)", "", "1. Continue"]
+                displayLines = ["Can't fight without weapons!", "Lost $\(fine)", "", "1. Continue"]
             }
             gameMode = .menu
         case "3":
@@ -557,6 +583,53 @@ class GameState: ObservableObject {
             gameMode = .menu
         default:
             break
+        }
+    }
+    
+    func initializeWeapons() {
+        // Player starts with no weapons
+        weaponsInventory = [:]
+    }
+    
+    func findWeapon() {
+        let foundWeapon = weapons.randomElement() ?? "Pistol"
+        weaponsInventory[foundWeapon] = (weaponsInventory[foundWeapon] ?? 0) + 1
+        
+        displayLines = [
+            "WEAPON FOUND!",
+            "",
+            "You found a \\(foundWeapon)!",
+            "",
+            "Your arsenal:",
+        ]
+        
+        for (weapon, count) in weaponsInventory {
+            displayLines.append("\\(weapon): \\(count)")
+        }
+        
+        displayLines.append("")
+        displayLines.append("1. Continue")
+        gameMode = .menu
+    }
+    
+    func getWeaponPower(_ weapon: String) -> Int {
+        switch weapon {
+        case "Pistol": return 3
+        case "Shotgun": return 5
+        case "Rifle": return 7
+        case "Machine Gun": return 10
+        default: return 1
+        }
+    }
+    
+    func getEnemyStrength(_ enemy: String) -> Int {
+        switch enemy {
+        case "Officer Hardass": return 4
+        case "Detective Stone": return 6
+        case "Agent Smith": return 8
+        case "Sheriff Brown": return 5
+        case "Captain Miller": return 7
+        default: return 4
         }
     }
 }

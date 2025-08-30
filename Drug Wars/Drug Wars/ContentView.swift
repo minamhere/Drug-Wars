@@ -106,39 +106,31 @@ struct CalculatorButtonsView: View {
     @ObservedObject var gameState: GameState
     
     let buttonLayout = [
-        ["Y=", "WINDOW", "ZOOM", "TRACE", "GRAPH"],
-        ["2nd", "MODE", "DEL", "←", "CLEAR"],
-        ["X,T,θ,n", "STAT", "MATH", "APPS", "PRGM"],
-        ["x⁻¹", "SIN", "COS", "TAN", "^"],
-        ["x²", "x", "LOG", "LN", "STO→"],
-        ["7", "8", "9", ")", "÷"],
-        ["4", "5", "6", "×", "-"],
-        ["1", "2", "3", "+", "ENTER"],
-        ["0", ".", "(-)", "", ""]
+        ["DEL", "CLEAR"],
+        ["7", "8", "9"],
+        ["4", "5", "6"],
+        ["1", "2", "3"],
+        ["0", "ENTER"]
     ]
     
     var body: some View {
         VStack(spacing: 3) {
             ForEach(0..<buttonLayout.count, id: \.self) { row in
-                HStack(spacing: 3) {
+                HStack(spacing: 8) {
                     ForEach(0..<buttonLayout[row].count, id: \.self) { col in
                         let buttonText = buttonLayout[row][col]
-                        if !buttonText.isEmpty {
-                            CalculatorButton(
-                                text: buttonText,
-                                action: { gameState.handleButtonPress(buttonText) },
-                                isLastColumn: col == 4
-                            )
-                        } else {
-                            Spacer()
-                                .frame(maxWidth: .infinity, maxHeight: 35)
-                        }
+                        CalculatorButton(
+                            text: buttonText,
+                            action: { gameState.handleButtonPress(buttonText) },
+                            isEnterButton: buttonText == "ENTER",
+                            isClearButton: buttonText == "CLEAR" || buttonText == "DEL"
+                        )
                     }
                 }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .frame(maxHeight: .infinity)
         .background(Color(red: 0.3, green: 0.35, blue: 0.25))
     }
@@ -147,23 +139,27 @@ struct CalculatorButtonsView: View {
 struct CalculatorButton: View {
     let text: String
     let action: () -> Void
-    let isLastColumn: Bool
+    let isEnterButton: Bool
+    let isClearButton: Bool
     
-    init(text: String, action: @escaping () -> Void, isLastColumn: Bool = false) {
+    init(text: String, action: @escaping () -> Void, isEnterButton: Bool = false, isClearButton: Bool = false) {
         self.text = text
         self.action = action
-        self.isLastColumn = isLastColumn
+        self.isEnterButton = isEnterButton
+        self.isClearButton = isClearButton
     }
     
     var buttonColor: Color {
-        if isLastColumn {
-            return Color(red: 0.2, green: 0.3, blue: 0.6)
+        if isEnterButton {
+            return Color(red: 0.1, green: 0.6, blue: 0.1)
+        } else if isClearButton {
+            return Color(red: 0.7, green: 0.2, blue: 0.2)
         }
         return Color(red: 0.15, green: 0.15, blue: 0.15)
     }
     
     var textColor: Color {
-        if isLastColumn {
+        if isEnterButton || isClearButton {
             return .white
         }
         return Color(red: 0.9, green: 0.9, blue: 0.9)
@@ -172,7 +168,7 @@ struct CalculatorButton: View {
     var body: some View {
         Button(action: action) {
             Text(text)
-                .font(.custom("Helvetica Neue", size: 12).weight(.bold))
+                .font(.custom("Helvetica Neue", size: 18).weight(.bold))
                 .foregroundColor(textColor)
                 .minimumScaleFactor(0.6)
                 .textCase(.uppercase)
@@ -187,7 +183,7 @@ struct CalculatorButton: View {
                         .shadow(color: .black.opacity(0.3), radius: 1, x: 1, y: 1)
                 )
         }
-        .frame(height: 35)
+        .frame(height: 65)
     }
 }
 
