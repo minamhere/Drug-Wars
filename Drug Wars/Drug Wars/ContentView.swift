@@ -39,7 +39,7 @@ struct CalculatorScreenView: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 Text("DRUG WARS")
-                    .font(.custom("Courier", size: 16).weight(.black).monospaced())
+                    .font(.custom("Courier", size: 20).weight(.black).monospaced())
                     .foregroundColor(.black)
                     .tracking(2.0)
                     .textCase(.uppercase)
@@ -52,46 +52,46 @@ struct CalculatorScreenView: View {
                     VStack(alignment: .leading, spacing: 1) {
                         ForEach(gameState.displayLines, id: \.self) { line in
                             Text(line)
-                                .font(.custom("Courier", size: 11).weight(.black).monospaced())
+                                .font(.custom("Courier", size: 14).weight(.black).monospaced())
                                 .foregroundColor(.black)
                                 .tracking(1.2)
                                 .textCase(.uppercase)
                         }
-                        
-                        HStack {
-                            Text("LOC: \(gameState.currentLocation.uppercased())")
-                                .font(.custom("Courier", size: 9).weight(.black).monospaced())
-                                .foregroundColor(.black)
-                                .tracking(0.5)
-                            
-                            Spacer()
-                            
-                            Text("CAP: \(gameState.usedCapacity())/\(gameState.capacity)")
-                                .font(.custom("Courier", size: 9).weight(.black).monospaced())
-                                .foregroundColor(.black)
-                                .tracking(0.5)
-                        }
-                        .padding(.top, 4)
                     }
                 }
                 
                 HStack {
+                    Text("LOC: \(gameState.currentLocation.uppercased())")
+                        .font(.custom("Courier", size: 12).weight(.black).monospaced())
+                        .foregroundColor(.black)
+                        .tracking(0.5)
+                    
+                    Spacer()
+                    
+                    Text("CAP: \(gameState.usedCapacity())/\(gameState.capacity)")
+                        .font(.custom("Courier", size: 12).weight(.black).monospaced())
+                        .foregroundColor(.black)
+                        .tracking(0.5)
+                }
+                .padding(.top, 4)
+                
+                HStack {
                     Text("DAY: \(gameState.currentDay)/30")
-                        .font(.custom("Courier", size: 9).weight(.black).monospaced())
+                        .font(.custom("Courier", size: 12).weight(.black).monospaced())
                         .foregroundColor(.black)
                         .tracking(1.0)
                     
                     Spacer()
                     
                     Text("CASH: $\(gameState.cash)")
-                        .font(.custom("Courier", size: 9).weight(.black).monospaced())
+                        .font(.custom("Courier", size: 12).weight(.black).monospaced())
                         .foregroundColor(.black)
                         .tracking(1.0)
                     
                     Spacer()
                     
                     Text("DEBT: $\(gameState.debt)")
-                        .font(.custom("Courier", size: 9).weight(.black).monospaced())
+                        .font(.custom("Courier", size: 12).weight(.black).monospaced())
                         .foregroundColor(.black)
                         .tracking(1.0)
                 }
