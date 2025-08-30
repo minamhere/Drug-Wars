@@ -68,7 +68,7 @@ struct CalculatorScreenView: View {
                     
                     Spacer()
                     
-                    Text("CAP: \(gameState.usedCapacity())/\(gameState.capacity)")
+                    Text("CAP: \(gameState.usedCapacity())/\(gameState.maxCapacity())")
                         .font(.custom("Courier", size: 12).weight(.black).monospaced())
                         .foregroundColor(.black)
                         .tracking(0.5)

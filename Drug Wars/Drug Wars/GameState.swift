@@ -8,10 +8,12 @@ class GameState: ObservableObject {
     @Published var displayLines: [String] = []
     @Published var gameMode: GameMode = .menu
     @Published var inventory: [String: Int] = [:]
-    @Published var capacity: Int = 10000
+    @Published var capacity: Int = 100
     @Published var hasGun: Bool = false
     @Published var weaponsInventory: [String: Int] = [:]
     @Published var currentRoadblockType: String = ""
+    @Published var hasCoat: Bool = false
+    @Published var bankBalance: Int = 0
     @Published var numberInput: String = ""
     @Published var selectedDrug: String = ""
     
@@ -32,6 +34,8 @@ class GameState: ObservableObject {
         case sellingAmount
         case encounter
         case gameOver
+        case bank
+        case randomEvent
     }
     
     init() {
@@ -43,6 +47,10 @@ class GameState: ObservableObject {
     
     func usedCapacity() -> Int {
         return inventory.values.reduce(0, +)
+    }
+    
+    func maxCapacity() -> Int {
+        return hasCoat ? 200 : capacity
     }
     
     func generateDrugPrices() {
@@ -100,7 +108,7 @@ class GameState: ObservableObject {
         }
         
         displayLines.append("")
-        displayLines.append("1)BUY  2)SELL  3)TRAVEL")
+        displayLines.append("1)BUY  2)SELL  3)TRAVEL  4)BANK")
         gameMode = .trading
     }
     
@@ -122,10 +130,13 @@ class GameState: ObservableObject {
             handleNumberInput(button, action: "sell")
         case .encounter:
             handleEncounterInput(button)
+        case .bank:
+            handleBankInput(button)
+        case .randomEvent:
+            handleRandomEventInput(button)
         case .gameOver:
-            if button == "1" {
-                showMainMenu()
-            }
+            // Any button press restarts the game
+            startGame()
         default:
             break
         }
@@ -160,6 +171,8 @@ class GameState: ObservableObject {
             showSellMenu()
         case "3":
             showTravelMenu()
+        case "4":
+            showBankMenu()
         default:
             break
         }
@@ -188,6 +201,8 @@ class GameState: ObservableObject {
         inventory = [:]
         hasGun = false
         weaponsInventory = [:]
+        hasCoat = false
+        bankBalance = 0
         initializeWeapons()
         print("About to generate drug prices...")
         generateDrugPrices()
@@ -300,20 +315,22 @@ class GameState: ObservableObject {
         
         let encounterChance = Int.random(in: 1...10)
         if encounterChance <= 3 {
-            roadblockEncounter()
+            policeEncounter()
         } else if encounterChance == 4 && Int.random(in: 1...10) <= 2 {
             findWeapon()
+        } else if encounterChance == 5 && Int.random(in: 1...10) <= 3 {
+            randomTravelEvent()
         } else {
             showTradingScreen()
         }
     }
     
-    func roadblockEncounter() {
+    func policeEncounter() {
         currentRoadblockType = roadblockTypes.randomElement() ?? "Officer Hardass"
         let hasWeapons = !weaponsInventory.isEmpty
         
         displayLines = [
-            "ROADBLOCK ENCOUNTER!",
+            "POLICE ENCOUNTER!",
             "",
             "\(currentRoadblockType) is here!",
             "",
@@ -339,7 +356,7 @@ class GameState: ObservableObject {
             "",
             profit > 0 ? "You won!" : "You lost!",
             "",
-            "Press any key to restart"
+            "Press any button to play again"
         ]
         gameMode = .gameOver
     }
@@ -381,7 +398,7 @@ class GameState: ObservableObject {
     func showBuyDrugScreen(_ drug: String) {
         let price = drugPrices[currentLocation]?[drug] ?? 0
         let maxAffordable = cash / price
-        let maxCapacity = capacity - usedCapacity()
+        let maxCapacity = maxCapacity() - usedCapacity()
         let maxCanBuy = min(maxAffordable, maxCapacity)
         
         displayLines = [
@@ -445,7 +462,7 @@ class GameState: ObservableObject {
         
         if action == "buy" {
             let maxAffordable = cash / max(price, 1)
-            let maxCapacity = capacity - usedCapacity()
+            let maxCapacity = maxCapacity() - usedCapacity()
             let maxCanBuy = min(maxAffordable, maxCapacity)
             
             displayLines = [
@@ -498,7 +515,7 @@ class GameState: ObservableObject {
     func buyDrug(_ drug: String, amount: Int) {
         let price = drugPrices[currentLocation]?[drug] ?? 0
         let cost = amount * price
-        let maxCapacity = capacity - usedCapacity()
+        let maxCapacity = maxCapacity() - usedCapacity()
         
         if cost > cash {
             displayLines = ["Not enough cash!"]
@@ -631,5 +648,192 @@ class GameState: ObservableObject {
         case "Captain Miller": return 7
         default: return 4
         }
+    }
+    
+    // MARK: - Bank System
+    func showBankMenu() {
+        displayLines = [
+            "FIRST NATIONAL BANK",
+            "",
+            "Current Balance: $\(bankBalance)",
+            "Your Debt: $\(debt)",
+            "",
+            "1. Deposit Money",
+            "2. Withdraw Money", 
+            "3. Get Loan",
+            "4. Repay Loan",
+            "0. Back to Main"
+        ]
+        gameMode = .bank
+    }
+    
+    func handleBankInput(_ input: String) {
+        switch input {
+        case "1":
+            if cash > 0 {
+                bankBalance += cash
+                displayLines = ["Deposited $\(cash)", "", "1. Continue"]
+                cash = 0
+            } else {
+                displayLines = ["No money to deposit!", "", "1. Continue"]
+            }
+            gameMode = .menu
+        case "2":
+            if bankBalance > 0 {
+                cash += bankBalance
+                displayLines = ["Withdrew $\(bankBalance)", "", "1. Continue"]
+                bankBalance = 0
+            } else {
+                displayLines = ["No money in bank!", "", "1. Continue"]
+            }
+            gameMode = .menu
+        case "3":
+            let loanAmount = Int.random(in: 1000...3000)
+            cash += loanAmount
+            debt += loanAmount
+            displayLines = ["Loan approved: $\(loanAmount)", "New debt: $\(debt)", "", "1. Continue"]
+            gameMode = .menu
+        case "4":
+            if cash >= debt {
+                cash -= debt
+                displayLines = ["Debt paid off!", "You're debt-free!", "", "1. Continue"]
+                debt = 0
+            } else if cash > 0 {
+                let payment = cash
+                debt -= payment
+                cash = 0
+                displayLines = ["Paid $\(payment)", "Remaining debt: $\(debt)", "", "1. Continue"]
+            } else {
+                displayLines = ["No money to pay debt!", "", "1. Continue"]
+            }
+            gameMode = .menu
+        case "0":
+            showTradingScreen()
+        default:
+            break
+        }
+    }
+    
+    // MARK: - Random Travel Events
+    func randomTravelEvent() {
+        let eventType = Int.random(in: 1...4)
+        switch eventType {
+        case 1:
+            findMoney()
+        case 2:
+            findCoat()
+        case 3:
+            findDrugs()
+        default:
+            drugRaid()
+        }
+    }
+    
+    func handleRandomEventInput(_ input: String) {
+        if input == "1" {
+            showTradingScreen()
+        }
+    }
+    
+    func findMoney() {
+        let amount = Int.random(in: 100...1000)
+        cash += amount
+        displayLines = [
+            "LUCKY FIND!",
+            "",
+            "You found $\(amount)",
+            "in an old coat!",
+            "",
+            "Cash: $\(cash)",
+            "",
+            "1. Continue"
+        ]
+        gameMode = .randomEvent
+    }
+    
+    func findCoat() {
+        if !hasCoat {
+            hasCoat = true
+            displayLines = [
+                "COAT FOUND!",
+                "",
+                "You found a trench coat!",
+                "Capacity doubled!",
+                "",
+                "New capacity: \(maxCapacity())",
+                "",
+                "1. Continue"
+            ]
+        } else {
+            let amount = Int.random(in: 200...500)
+            cash += amount
+            displayLines = [
+                "MONEY IN COAT!",
+                "",
+                "You found $\(amount)",
+                "in a coat pocket!",
+                "",
+                "1. Continue"
+            ]
+        }
+        gameMode = .randomEvent
+    }
+    
+    func findDrugs() {
+        let drug = drugs.randomElement() ?? "Weed"
+        let amount = Int.random(in: 1...5)
+        
+        if usedCapacity() + amount <= maxCapacity() {
+            inventory[drug] = (inventory[drug] ?? 0) + amount
+            displayLines = [
+                "DRUG STASH FOUND!",
+                "",
+                "You found \(amount) \(drug)!",
+                "",
+                "Capacity: \(usedCapacity())/\(maxCapacity())",
+                "",
+                "1. Continue"
+            ]
+        } else {
+            displayLines = [
+                "DRUG STASH FOUND!",
+                "",
+                "But you have no space!",
+                "Get a coat for more capacity.",
+                "",
+                "1. Continue"
+            ]
+        }
+        gameMode = .randomEvent
+    }
+    
+    func drugRaid() {
+        if !inventory.isEmpty {
+            let lostDrug = inventory.keys.randomElement() ?? "Weed"
+            let lostAmount = min(inventory[lostDrug] ?? 0, Int.random(in: 1...3))
+            inventory[lostDrug] = max(0, (inventory[lostDrug] ?? 0) - lostAmount)
+            if inventory[lostDrug] == 0 {
+                inventory.removeValue(forKey: lostDrug)
+            }
+            
+            displayLines = [
+                "DRUG RAID!",
+                "",
+                "Police raided a stash house!",
+                "Lost \(lostAmount) \(lostDrug)",
+                "",
+                "1. Continue"
+            ]
+        } else {
+            displayLines = [
+                "POLICE ACTIVITY!",
+                "",
+                "Heavy police presence",
+                "in the area. Stay alert!",
+                "",
+                "1. Continue"
+            ]
+        }
+        gameMode = .randomEvent
     }
 }
